@@ -1,0 +1,219 @@
+<html>
+<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+<body>
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="chart-container" style="height:30vh; width:60vw">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+        <div class="right-panel">
+            <div id="table">
+
+            </div>
+        </div>
+    </div>
+</body>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .content {
+        margin: 20px;
+        display: flex;
+        justify-content: center;
+        align-content: center;
+    }
+    .content-wrapper {
+        display: flex;
+        justify-content: center;
+        align-content: center;
+        min-height: 100vh;
+    }
+    .content {
+        flex: 1 0 auto;
+    }
+    .right-panel {
+        position: relative;
+        flex: 0 0 500px;
+        border-left: 1px solid rgba(0,0,0,.2);
+        padding: 20px;
+        height: 100vh;
+        overflow-y: scroll;
+    }
+    #table {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        top: 20px;
+        bottom: 20px;
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script>
+    const table = document.getElementById("table");
+    axios.defaults.withCredentials = true;
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const names = urlParams.get('names');
+        const startDate = urlParams.get('startDate');
+        const endDate = urlParams.get('endDate');
+        const format = urlParams.get('format');
+        const rallyPath = urlParams.get('rallyPath');
+        const incremental = urlParams.get('incremental') === 'true';
+        const ctx = document.getElementById('chart');
+        axios.all(names.split(',').map(
+            name => axios.get(`/commits/${name}`, {params: {startDate, endDate}})
+        ))
+            .then(
+                results => {
+                    const allData = _.chain(results).pluck('data').reduce((sum,d) => ({...sum, ...d}), {} ).value()
+                    const allDates = _.chain(allData)
+                        .pluck('commits')
+                        .values().flatten().groupBy(commit => {
+                            return moment(commit.date).format(format)
+                        }).keys().sort(
+                            (a, b) => {
+                                return moment(a, format).isSame(moment(b, format)) ? 0 :
+                                moment(a, format).isBefore(moment(b, format)) ? -1 : 1;
+                            }
+                        ).value();
+
+                    console.log(allDates);
+
+                    const datasets = Object.keys(allData).map(
+                        key => {
+                            const color = getRandomColor();
+                            const groupped = _.chain(allData[key]['commits']).groupBy(commit => {
+                                return moment(commit.date).format(format)
+                            })
+                            .value();
+                            const grouppedRally = _.chain(allData[key]['rally']).groupBy('FormattedID')
+                                .value();
+
+                            if(incremental) {
+                                const keys = Object.keys(groupped).sort(
+                                    (a, b) => new Date(a) - new Date(b)
+                                );
+                                keys.map((key, index) => {
+                                    return groupped[key] = [ ...(groupped[keys[index -1]] || []),  ...Object.values(groupped[key]) ]
+                                });
+                            }
+
+                            return {
+                                label: key,
+                                data: (function (rallyPath) {
+                                    if( rallyPath) {
+                                        return _.map(allDates, (value, key) => {
+                                            const formattedDate = value;
+                                            return groupped[formattedDate] ? _.chain(groupped[formattedDate]).groupBy('rally').keys().value().reduce(
+                                                (sum, rally) => {
+                                                    const rallyData = grouppedRally[rally] && grouppedRally[rally][0] ? grouppedRally[rally][0][rallyPath] : 0;
+                                                    return sum + rallyData;
+                                                }
+                                            ,0) : 0
+                                        });
+                                    }
+
+                                    return _.map(allDates, (value, key) => {
+                                        const formattedDate = value;
+                                        return groupped[formattedDate] ? groupped[formattedDate].filter(
+                                            commit => commit.sha.trim() !== ''
+                                        ).length : 0
+                                    });
+                                })(rallyPath),
+                                borderColor: color,
+                                backgroundColor: color,
+                                fill: false,
+                                lineTension: 0
+                            }
+                        }
+                    )
+                    const myChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: allDates,
+                            datasets
+                        },
+                        options: {
+                            tooltips: {
+                                callbacks: {
+                                    label: function(tooltipItem, data) {
+                                        const key = data.datasets[tooltipItem.datasetIndex].label;
+                                        const groupped = _.chain(allData[key]['commits']).groupBy(commit => {
+                                            return moment(commit.date).format(format)
+                                        }).value()[tooltipItem.label].filter(commit => commit.sha.trim() !== '');
+                                        const results = [
+                                            `Total: ${data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index]}`,
+                                            incremental ? `Increment: ${data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index]
+                                                - (data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index-1] || 0)}` : '',
+                                            ''
+                                        ].concat(_.chain(groupped).groupBy(
+                                            commit => (commit.message.match(
+                                                new RegExp('(US|DE)[0-9]{6}', 'g')
+                                            ) || [])[0]
+                                        ).keys().filter(value => value !== 'undefined').value());
+
+                                        axios.all(
+                                            results
+                                                .filter(item => (item+'').match(new RegExp('(US|DE)[0-9]{6}', 'g')))
+                                                .map(
+                                            ticket => {
+                                                let fetchURL = 'https://rally1.rallydev.com/slm/webservice/v2.0/';
+                                                if ((ticket + '').startsWith('DE')) {
+                                                    fetchURL += 'defect';
+                                                } else {
+                                                    fetchURL += 'hierarchicalrequirement';
+                                                }
+                                                fetchURL += `?query=(FormattedID%20=%20${ticket})`;
+                                                fetchURL += '&fetch=true';
+                                                return axios.get(
+                                                    fetchURL
+                                                )
+                                            }
+                                        )).then(result => {
+                                            table.innerHTML = '';
+                                            const header = document.createElement('h2');
+                                            header.innerHTML = 'Total PlanEstimate: ' + _.chain(result).pluck('data').pluck('QueryResult').pluck('Results').flatten().pluck('PlanEstimate').reduce((a, b) => a + b, 0).value() + "SP"
+                                            table.appendChild( header );
+                                            const tasks = _.chain(result).pluck('data').pluck('QueryResult').pluck('Results').flatten().value().map(
+                                                task => {
+                                                    const div = document.createElement('div');
+                                                    div.innerHTML = `<hr><h3>${task.FormattedID} - ${task.Name}</h3> <a href="https://rally1.rallydev.com/#/search?keywords=${task.FormattedID}">link</a>
+                                                        <strong> PlanEstimate: ${task.PlanEstimate}</strong>
+                                                        <div>${task.Description.replace(/(\/.*?\.\w{3})/g, 'https://rally1.rallydev.com/$&')}</div>`;
+                                                    table.appendChild( div );
+                                                }
+                                            );
+                                        })
+
+                                        return results;
+                                    }
+                                }
+                            }
+                        }
+                    });
+            }
+        );
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+    };
+
+</script>
+</html>

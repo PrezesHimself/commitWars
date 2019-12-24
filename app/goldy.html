@@ -1,0 +1,59 @@
+<html>
+<body>
+    <div class="chart-container" style="position: relative; height:40vh; width:80vw">
+        <canvas id="chart"></canvas>
+    </div>
+</body>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-content: center;
+        min-height: 100vh;
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+    window.onload = function() {
+        var ctx = document.getElementById('chart');
+
+        axios.get('/commits-gold')
+            .then(
+                results => {
+                    const datasets = Object.keys(results.data).map(
+                        key => {
+                            const color = getRandomColor();
+                            return {
+                                label: key,
+                                data: results.data[key],
+                                borderColor: color,
+                                backgroundColor: color,
+                                fill: false,
+                                lineTension: 0
+                            }
+                        }
+                    )
+                    const myChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan 2019', 'Feb 2019', 'Mar 2019', 'Apr 2019', 'May 2019', 'Jun 2019', 'Jul 2019', 'Aug 2019', 'Sep 2019', 'Oct 2019', 'Nov 2019', 'Dec 2019'],
+                            datasets
+                        }
+                    });
+            }
+        );
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+    };
+
+</script>
+</html>
