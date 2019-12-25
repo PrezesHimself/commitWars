@@ -11,6 +11,7 @@ const buffor = {maxBuffer: 1024 * 1024};
 
 app.get('/', (req, res) => {
     exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
+        console.log({error, stdout, stderr});
         res.render(path.resolve(__dirname + '/../views/index.hbs'), { output: stdout});
     });
 });
@@ -25,7 +26,9 @@ app.get('/clone', (req, res) => {
         return
     }
     exec(`sh bash/clone.sh ${process.env.REPO}`, buffor, (error, stdout, stderr) => {
+        console.log({error, stdout, stderr});
         exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
+            console.log({error, stdout, stderr});
             res.render(path.resolve(__dirname + '/../views/index.hbs'), { output: stdout});
         });
     });
@@ -33,7 +36,9 @@ app.get('/clone', (req, res) => {
 
 app.get('/reset', (req, res) => {
     exec(`sh bash/reset.sh`, buffor, (error, stdout, stderr) => {
+        console.log({error, stdout, stderr});
         exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
+            console.log({error, stdout, stderr});
             res.render(path.resolve(__dirname + '/../views/index.hbs'), { output: stdout});
         });
     });
@@ -49,7 +54,7 @@ app.get(
     const {startDate = '', endDate = ''} = req.query;
     const result = await new Promise(resolve => {
         exec(`sh bash/commitWars.sh ${req.params.name} ${startDate} ${endDate}`, {maxBuffer: 1024 * 5000}, async (error, stdout, stderr) => {
-
+            console.log({error, stdout, stderr});
             const result = {
                 commits: []
             };
