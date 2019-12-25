@@ -2,7 +2,7 @@ const express = require('express');
 
 const { exec } = require('child_process');
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const path = require('path');
 const exphbs  = require('express-handlebars');
 require('dotenv').config()
