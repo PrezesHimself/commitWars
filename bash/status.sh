@@ -1,2 +1,2 @@
 #!/bin/bash
-echo$(cd repository && git status)
+echo $(cd repository && git status)

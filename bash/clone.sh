@@ -1,2 +1,2 @@
 #!/bin/bash
-echo$(git clone $1 repository --progress --verbose)
+echo $(git clone $1 repository)
