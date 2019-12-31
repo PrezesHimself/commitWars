@@ -14,17 +14,14 @@ router.get('/clone', (req, res) => {
     }
     exec(`sh bash/clone.sh ${process.env.REPO}`, buffor, (error, stdout, stderr) => {
         exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
-            res.render('index.hbs', { output: stderr || stdout});
+            res.send(stderr || stdout);
         });
     });
 });
 
-router.get('/reset', (req, res) => {
-    exec(`sh bash/reset.sh`, buffor, (error, stdout, stderr) => {
-        console.log(stderr, stdout);
-        exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
-            res.render('index.hbs', { output: stderr || stdout});
-        });
+router.get('/status', (req, res) => {
+    exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
+        res.send(stderr || stdout);
     });
 });
 

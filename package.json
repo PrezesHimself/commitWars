@@ -5,14 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "mkdir repository && node ./server/index.js",
+    "start": "node ./server/index.js",
     "dev": "nodemon ./server/index.js localhost 8080"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.17.1",
-    "express-handlebars": "^3.1.0",
     "handlebars": "^4.5.3",
     "shelljs": "^0.8.3"
   },
