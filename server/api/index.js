@@ -5,13 +5,6 @@ const { exec } = require('child_process');
 const buffor = {maxBuffer: 1024 * 1024};
 
 router.get('/clone', (req, res) => {
-
-    if(!process.env.REPO) {
-        res.render('index.hbs', { output: `
-            export REPO=git://repo.com
-        `});
-        return
-    }
     exec(`sh bash/clone.sh ${process.env.REPO}`, buffor, (error, stdout, stderr) => {
         exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
             res.send(stderr || stdout);
@@ -20,10 +13,18 @@ router.get('/clone', (req, res) => {
 });
 
 router.get('/status', (req, res) => {
-    exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
+    exec(`sh bash/status.sh ${process.env.EXISTING_REPO}`, buffor, (error, stdout, stderr) => {
         res.send(stderr || stdout);
     });
 });
+
+
+router.get('/fetch', (req, res) => {
+    exec(`sh bash/fetch.sh ${process.env.EXISTING_REPO}`, buffor, (error, stdout, stderr) => {
+        res.send(stderr || stdout);
+    });
+});
+
 
 router.get(
     '/commits/:name',
@@ -31,7 +32,7 @@ router.get(
         const { exec } = require('child_process');
         const {startDate = '', endDate = ''} = req.query;
         const result = await new Promise(resolve => {
-            exec(`sh bash/commitWars.sh ${req.params.name} ${startDate} ${endDate}`, buffor, async (error, stdout, stderr) => {
+            exec(`sh bash/commitWars.sh ${process.env.EXISTING_REPO} ${req.params.name} ${startDate} ${endDate}`, buffor, async (error, stdout, stderr) => {
                 const result = {
                     commits: []
                 };
@@ -43,7 +44,8 @@ router.get(
                         sha: data[i].replace(/[\n\r]/g,' '),
                         date: data[i + 2],
                         message: data[i + 3],
-                        author: data[i + 1]
+                        author: data[i + 1],
+                        rally: ('DE153949: fix and refactor').match(/US\d{4,}|DE\d{4,}/gi)[0]
                     });
                 }
 
