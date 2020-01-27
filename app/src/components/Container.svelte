@@ -5,7 +5,8 @@
     import PreformatedOutput from './PreformatedOutput.svelte';
 
     let _output;
-    let names = 'rorat';
+    let names = 'rorat, susel';
+    let release = 'SR360 20.2';
 
     const unsubscribe = output.subscribe(value => {
         _output = value;
@@ -16,14 +17,17 @@
     });
 
     async function handleCommits() {
-        const {data} = await axios.get(`api/commits/${names}`, {
+        const data = await Promise.all(names.split(',').map(name => name.trim()).map(name => axios.get(`api/commits/${release}/${name}`, {
             params: {
-                startDate: 2000,
+                startDate: 2018,
                 endDate: 2020
             }
-        });
+        })));
         console.log(data);
-        output.set(data);
+        output.set(
+            data.map(data => data.data)
+                    .map(data => `${data.name}: estimate sum: ${data.estimateSum}`)
+        );
     }
 
     async function handleStatus() {
@@ -58,6 +62,7 @@
         <button on:click={handleStatus}>status</button>
         |
         <input type="text"  bind:value={names}>
+        <input type="text"  bind:value={release}>
         <button on:click={handleCommits}>commits</button>
     </div>
     <div>
