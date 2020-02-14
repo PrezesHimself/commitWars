@@ -42,6 +42,7 @@
                             tasks: preparedTasks,
                             sumOfEstimates: preparedTasks.reduce((sum, task) => sum + task.estimate, 0),
                             sumOfCommits: preparedTasks.reduce((sum, task) => sum + task.commits.length, 0),
+                            extentionsChanged: _.uniq(preparedTasks.reduce((sum, task) => sum.concat(task.extentionsChanged), [])),
                             releaseName: key
                         };
                     });
@@ -101,7 +102,6 @@
         <input type="text"  bind:value={names}>
         <button on:click={handleCommits}>GO!</button>
     </div>
-    <div>
-        <Releases releases={_releases}/>
-    </div>
+
+    <Releases releases={_releases}/>
 </div>

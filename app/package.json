@@ -18,6 +18,7 @@
     "dev": "webpack-dev-server --content-base public"
   },
   "dependencies": {
-    "axios": "^0.19.0"
+    "axios": "^0.19.0",
+    "svelte-routing": "^1.4.0"
   }
 }

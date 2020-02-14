@@ -4,12 +4,13 @@
 </script>
 
 <style>
+    .releases {
+        width: 80vw;
+    }
 </style>
 
-<div>
-    <div>
-        {#each releases as release}
-            <Release release={release}/>
-        {/each}
-    </div>
+<div class="releases">
+    {#each releases as release}
+        <Release release={release}/>
+    {/each}
 </div>

@@ -6,5 +6,5 @@
 </style>
 
 <div>
-    <a href="{task.link}">{task.id}</a>: {task.authors.join(', ')}
+    <a href="{task.link}">{task.id}</a>: {task.authors.join(', ')} --- {task.extentionsChanged}
 </div>

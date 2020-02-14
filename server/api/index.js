@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { exec } = require('child_process');
+const {exec} = require('child_process');
 const axios = require('axios');
 const _ = require('underscore');
 const rally = require('rally'),
@@ -38,61 +38,68 @@ router.get('/fetch', (req, res) => {
 router.get(
     '/commits/:name',
     async (req, res) => {
-        const { exec } = require('child_process');
+        const {exec} = require('child_process');
         const {startDate = '', endDate = ''} = req.query;
         const result = await new Promise(resolve => {
-            exec(`sh bash/commitWars.sh ${process.env.EXISTING_REPO || 'C:\\SabreDeveloper\\srw'} "${req.params.name}" ${req.query.startDate} ${req.query.endDate}`, buffor, async (error, stdout, stderr) => {
-                const result = {
-                    commits: []
-                };
-                const data = stdout.split('ŶŶŶŶ');
+            exec(`sh bash/commitWars.sh ${process.env.EXISTING_REPO || 'C:\\SabreDeveloper\\srw'} "${req.params.name}" ${startDate} ${endDate}`,
+                buffor,
+                async (error, stdout, stderr) => {
+                    const result = {
+                        commits: []
+                    };
+                    const data = stdout.split('ŶŶŶŶ');
 
-                if(stderr) return res.send(stderr);
+                    if (stderr) return res.send(stderr);
 
-                for (let i = 0; i < data.length; i+=4) {
-                    result.commits.push({
-                        sha: data[i].replace(/[\n\r]/g,' '),
-                        date: data[i + 2],
-                        message: data[i + 3],
-                        author: data[i + 1],
-                        rallyId: ((data[i + 3] || '').match(/US\d{4,}|DE\d{4,}/gi) ||  [])[0]
-                    });
-                }
-
-                result.rally = await Promise.all(result.commits.map(commit => commit.rallyId).unique().filter(rally => !!rally).map(
-                    async ticket => {
-                        try {
-                            const rallyData = await restApi.query({
-                                type: (ticket + '').startsWith('DE') ? 'defect' : 'hierarchicalrequirement', //the type to query
-                                fetch: ['FormattedID', 'PlanEstimate', 'Release'], //the fields to retrieve
-                                query: queryUtils.where('FormattedId', '=', ticket), //optional filter
-                                scope: {
-                                },
-                                requestOptions: {} //optional additional options to pass through to request
-                            });
-                            return rallyData.Results[0];
-                        } catch(error) {
-                            console.log(error)
-                            res.send(error)
-                        }
+                    for (let i = 1; i < data.length; i += 5) {
+                        const commit = {
+                            sha: data[i].replace(/[\n\r]/g, ' '),
+                            date: data[i + 2],
+                            message: data[i + 3],
+                            author: data[i + 1],
+                            files: data[i + 4].trim().split(' '),
+                            rallyId: ((data[i + 3] || '').match(/US\d{4,}|DE\d{4,}/gi) || [])[0]
+                        };
+                        console.log(commit);
+                        result.commits.push(commit);
                     }
-                ));
 
-                const mappedResults = result.rally.filter(rally => rally).map(
-                    rally => (
-                        {
-                            release:  rally.Release ? rally.Release._refObjectName : '',
-                            id: rally.FormattedID,
-                            description: rally.Description,
-                            commits: result.commits.filter(commit => commit.rallyId === rally.FormattedID ),
-                            estimate: rally.PlanEstimate,
-                            link: 'https://rally1.rallydev.com/#/search?keywords=' + rally.FormattedID,
-                            author: req.params.name,
+                    result.rally = await Promise.all(result.commits.map(commit => commit.rallyId).unique().filter(rally => !!rally).map(
+                        async ticket => {
+                            try {
+                                const rallyData = await restApi.query({
+                                    type: (ticket + '').startsWith('DE') ? 'defect' : 'hierarchicalrequirement', //the type to query
+                                    fetch: ['FormattedID', 'PlanEstimate', 'Release'], //the fields to retrieve
+                                    query: queryUtils.where('FormattedId', '=', ticket), //optional filter
+                                    scope: {},
+                                    requestOptions: {} //optional additional options to pass through to request
+                                });
+                                return rallyData.Results[0];
+                            } catch (error) {
+                                console.log(error)
+                                res.send(error)
+                            }
                         }
-                    )
-                );
-                resolve(_.groupBy(mappedResults, 'release'));
-            });
+                    ));
+
+                    const mappedResults = result.rally.filter(rally => rally).map(
+                        rally => {
+                            const filesChanged = _.map(result.commits, 'files').reduce((sum, files) => sum.concat(files), []);
+                            return {
+                                release: rally.Release ? rally.Release._refObjectName : '',
+                                    id: rally.FormattedID,
+                                description: rally.Description,
+                                commits: result.commits.filter(commit => commit.rallyId === rally.FormattedID),
+                                filesChanged,
+                                extentionsChanged: _.uniq(filesChanged.map(file => file.split('.').pop())),
+                                estimate: rally.PlanEstimate,
+                                link: 'https://rally1.rallydev.com/#/search?keywords=' + rally.FormattedID,
+                                author: req.params.name,
+                            }
+                        }
+                    );
+                    resolve(_.groupBy(mappedResults, 'release'));
+                });
         });
 
         const releases = {};
