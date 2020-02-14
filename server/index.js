@@ -18,7 +18,7 @@ app.use(
     )
 );
 app.use(cors());
-app.options('*', cors())
+app.options('*', cors());
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../app/public', 'index.html'))

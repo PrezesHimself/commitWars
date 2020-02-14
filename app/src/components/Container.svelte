@@ -1,38 +1,71 @@
 <script>
-    import { output } from '../store.js';
+    import { releases } from '../store.js';
     import axios from 'axios';
     import { onMount } from 'svelte';
-    import PreformatedOutput from './PreformatedOutput.svelte';
+    import Releases from './Releases.svelte';
 
-    let _output;
-    let names = 'rorat, susel';
-    let release = 'SR360 20.2';
+    let _releases;
+    let names = 'Rorat,Adamik,Ligenzowski,Podmokly,Lipiec,obetkal,Susel,Wlodarczyk,Pater';
 
-    const unsubscribe = output.subscribe(value => {
-        _output = value;
+    const unsubscribe = releases.subscribe(value => {
+        _releases = value;
     });
 
     onMount(async () => {
-        handleStatus();
+        handleCommits();
     });
 
     async function handleCommits() {
-        const data = await Promise.all(names.split(',').map(name => name.trim()).map(name => axios.get(`api/commits/${release}/${name}`, {
+        const data = await Promise.all(names.split(',').map(name => name.trim()).map(name => axios.get(`api/commits/${name}`, {
             params: {
                 startDate: 2018,
                 endDate: 2020
             }
         })));
-        console.log(data);
-        output.set(
-            data.map(data => data.data)
-                    .map(data => `${data.name}: estimate sum: ${data.estimateSum}`)
+
+        const out =  _.compose(
+                grouppedResults => {
+                    const res = {};
+                    Object.keys(grouppedResults).map(key => {
+                        const formattedResult = {};
+                        const tasksIds = _.map(_.unique(grouppedResults[key].reduce((sum, r) => sum.concat(r && r.tasks), [])), t => t && t.id);
+                        const preparedTasks = _.map(tasksIds, taskId => {
+                            return  _.chain(grouppedResults[key]).pluck('tasks').flatten().filter({id: taskId}).reduce((sum, value) => {
+                                return !sum ? {...value, authors: [value.author]} : {...sum, authors: sum.authors.concat([value.author])}
+                            }, null).value();
+                        }).filter(task => !!task).map(task => {
+                            const { author, ...noAuthor} = task;
+                            return noAuthor
+                        });
+                        res[key] = {
+                            tasksIds,
+                            tasks: preparedTasks,
+                            sumOfEstimates: preparedTasks.reduce((sum, task) => sum + task.estimate, 0),
+                            sumOfCommits: preparedTasks.reduce((sum, task) => sum + task.commits.length, 0),
+                            releaseName: key
+                        };
+                    });
+                    return res;
+                },
+                filteredReleases => {
+                    const result = {};
+                    filteredReleases.map(release => result[release] = _.pluck(data.map(data => data.data.releases), release));
+                    return result;
+                },
+                releases => releases.filter(release => !!release),
+                _.uniq,
+                releases => releases.reduce((sum, release) => sum.concat(release), []),
+                data => data.map(data => data.data.releases).map(releases => Object.keys(releases))
+        )(data);
+
+        releases.set(
+                Object.values(out)
         );
     }
 
     async function handleStatus() {
         const {data} = await axios.get('api/status');
-        output.set(data);
+        console.log(data)
     }
 </script>
 
@@ -55,17 +88,20 @@
         border-radius: 4px;
         border: 1px solid rgba(255,255,255,.2);
     }
+    input {
+        padding: 10px;
+        width: 800px;
+        border-radius: 4px;
+        border: 1px solid rgba(0,0,0,.2)
+    }
 </style>
 
 <div class="container">
     <div>
-        <button on:click={handleStatus}>status</button>
-        |
         <input type="text"  bind:value={names}>
-        <input type="text"  bind:value={release}>
-        <button on:click={handleCommits}>commits</button>
+        <button on:click={handleCommits}>GO!</button>
     </div>
     <div>
-        <PreformatedOutput output={_output}/>
+        <Releases releases={_releases}/>
     </div>
 </div>
