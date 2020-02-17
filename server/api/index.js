@@ -7,19 +7,11 @@ const rally = require('rally'),
     queryUtils = rally.util.query;
 
 const restApi = rally({
-    user: 'mateusz.rorat.ctr@sabre.com', //required if no api key, defaults to process.env.RALLY_USERNAME
-    pass: 'Wodoglowie1', //requi
+    user: process.env.USER, //required if no api key, defaults to process.env.RALLY_USERNAME
+    pass: process.env.PASS, //requi
 });
 
 const buffor = {maxBuffer: 1024 * 1024};
-
-router.get('/clone', (req, res) => {
-    exec(`sh bash/clone.sh ${process.env.REPO}`, buffor, (error, stdout, stderr) => {
-        exec(`sh bash/status.sh`, buffor, (error, stdout, stderr) => {
-            res.send(stderr || stdout);
-        });
-    });
-});
 
 router.get('/status', (req, res) => {
     exec(`sh bash/status.sh ${process.env.EXISTING_REPO}`, buffor, (error, stdout, stderr) => {
@@ -41,7 +33,7 @@ router.get(
         const {exec} = require('child_process');
         const {startDate = '', endDate = ''} = req.query;
         const result = await new Promise(resolve => {
-            exec(`sh bash/commitWars.sh ${process.env.EXISTING_REPO || 'C:\\SabreDeveloper\\srw'} "${req.params.name}" ${startDate} ${endDate}`,
+            exec(`sh bash/commitWars.sh ${process.env.EXISTING_REPO} "${req.params.name}" ${startDate} ${endDate}`,
                 buffor,
                 async (error, stdout, stderr) => {
                     const result = {
