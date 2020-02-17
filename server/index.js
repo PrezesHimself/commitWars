@@ -23,7 +23,7 @@ app.options('*', cors());
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../app/public', 'index.html'))
 });
-router.use('/api', api);
+router.use('/api', cache('1 hour'), api);
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 

@@ -42,7 +42,18 @@
                             tasks: preparedTasks,
                             sumOfEstimates: preparedTasks.reduce((sum, task) => sum + task.estimate, 0),
                             sumOfCommits: preparedTasks.reduce((sum, task) => sum + task.commits.length, 0),
-                            extentionsChanged: _.uniq(preparedTasks.reduce((sum, task) => sum.concat(task.extentionsChanged), [])),
+                            sumOfUniqFiles:  _.uniq(preparedTasks.reduce((sum, task) => sum.concat(task.filesChanged), [])).length,
+                            sumOfFiles: preparedTasks.reduce((sum, task) => sum.concat(task.filesChanged), []).length,
+                            extentionsChanged: (() => {
+                                const res = _.chain(preparedTasks.reduce((sum, task) => sum.concat(task.extentionsChanged), []))
+                                        .unique()
+                                        .value();
+                                return res.reduce((sum, result) => {
+                                    const res = {};
+                                    Object.keys(result).forEach(key => res[key] = result[key] + (sum[key] || 0));
+                                    return {...sum, ...res};
+                                }, {});
+                            })(),
                             releaseName: key
                         };
                     });
@@ -72,7 +83,6 @@
 
 <style>
     .container {
-        flex: 0 1 80vh;
         display: flex;
         flex-direction: column;
         justify-content: center;

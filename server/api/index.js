@@ -8,7 +8,7 @@ const rally = require('rally'),
 
 const restApi = rally({
     user: 'mateusz.rorat.ctr@sabre.com', //required if no api key, defaults to process.env.RALLY_USERNAME
-    pass: process.env.PASS, //requi
+    pass: 'Wodoglowie1', //requi
 });
 
 const buffor = {maxBuffer: 1024 * 1024};
@@ -60,7 +60,6 @@ router.get(
                             files: data[i + 4].trim().split(' '),
                             rallyId: ((data[i + 3] || '').match(/US\d{4,}|DE\d{4,}/gi) || [])[0]
                         };
-                        console.log(commit);
                         result.commits.push(commit);
                     }
 
@@ -84,21 +83,46 @@ router.get(
 
                     const mappedResults = result.rally.filter(rally => rally).map(
                         rally => {
-                            const filesChanged = _.map(result.commits, 'files').reduce((sum, files) => sum.concat(files), []);
+                            const commits =  result.commits.filter(commit => commit.rallyId === rally.FormattedID);
+                            const filesChanged = _.uniq(_.map(commits, 'files').reduce((sum, files) => sum.concat(files), []));
                             return {
                                 release: rally.Release ? rally.Release._refObjectName : '',
                                     id: rally.FormattedID,
                                 description: rally.Description,
-                                commits: result.commits.filter(commit => commit.rallyId === rally.FormattedID),
+                                commits,
                                 filesChanged,
-                                extentionsChanged: _.uniq(filesChanged.map(file => file.split('.').pop())),
+                                extentionsChanged: (
+                                    () => {
+                                        const res = {};
+                                        const extentions = _.groupBy(filesChanged.map(file => file.split('.').pop()).filter(extention => extention.length < 5));
+                                        Object.keys(extentions).forEach(extention => {
+                                            res[extention] = extentions[extention].length
+                                        });
+                                        return res;
+                                    }
+                                )(),
                                 estimate: rally.PlanEstimate,
+                                feModules: _.uniq(
+                                    [
+                                        ...filesChanged.map(file => { var match = file.match(/(sabre-ngv-.*?(?=\/))/); return match && match[0] }).filter(module => !!module),
+                                        ...filesChanged.map(file => { var match = file.match(/webapp\/(plugins\/.*?)(?=\/)/); return match && match[1] }).filter(module => !!module),
+                                    ]
+                                ),
+                                bePackages: _.uniq(
+                                    [
+                                        ...filesChanged.map(file => { var match = file.match(/(.*?)(?=\/src)/); return match && match[1] }).filter(module => !!module),
+                                    ]
+                                ),
                                 link: 'https://rally1.rallydev.com/#/search?keywords=' + rally.FormattedID,
                                 author: req.params.name,
                             }
                         }
                     );
-                    resolve(_.groupBy(mappedResults, 'release'));
+                    const grouppedResults = _.groupBy(mappedResults, 'release');
+                    Object.keys(grouppedResults).forEach(releaseGroup => {
+                        const release = grouppedResults[releaseGroup];
+                    })
+                    resolve(grouppedResults);
                 });
         });
 

@@ -19,11 +19,6 @@
 
 <div class="app">
     <Router url="{url}">
-        <nav>
-            <Link to="/">Home</Link>
-            <Link to="releases">Releases</Link>
-        </nav>
-
         <Header/>
             <div>
                 <Route path="releases" component="{RouteReleases}" />
