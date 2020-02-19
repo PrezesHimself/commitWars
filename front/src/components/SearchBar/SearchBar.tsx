@@ -6,8 +6,8 @@ import { playForward } from 'ionicons/icons';
 
 interface SearchProps {
     searchText: string;
-    setSearchText: any;
-    seachCommiter: any;
+    setSearchText: Dispatch<SetStateAction<string>>;
+    seachCommiter: () => void;
 }
 
 const SearchBar: React.FC<SearchProps> = props => {
